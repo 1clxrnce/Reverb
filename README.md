@@ -1,12 +1,14 @@
-![Reverb wordmark beside black headphones and concentric sound waves](docs/media/reverb-hero.png)
+<p align="center">
+  <img src="assets/logo%2012%20black%20and%20white.png" width="144" height="144" alt="Reverb waveform logo">
+</p>
+
+<h1 align="center">Reverb</h1>
 
 **Reverb is an Android music player for searching songs and artists, streaming tracks, and saving your favorites.**
 
 [Releases](https://github.com/1clxrnce/Reverb/releases) · [Build from source](#build-from-source) · [How Reverb works](HOW_IT_WORKS.md)
 
 ## Listen with Reverb
-
-<img src="assets/logo%2012%20black%20and%20white.png" alt="Reverb app icon" width="96" align="right">
 
 - **Find music.** Search songs and artists together or narrow the results with the Songs and Artists filters. Browse trending tracks and visit artist pages.
 - **Control playback.** Use the mini-player or open Now Playing for artwork, seek and volume controls, the queue, shuffle, repeat, and a sleep timer.
