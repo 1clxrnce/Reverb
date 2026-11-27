@@ -8,6 +8,32 @@ import '../api/ytmusic_api.dart';
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  Future<void> copyGuestLibrary(
+    String guestUid,
+    FirebaseFirestore destination,
+    String destinationUid,
+  ) async {
+    final guest = _db.collection('users').doc(guestUid);
+    final account = destination.collection('users').doc(destinationUid);
+
+    for (final name in ['playlists', 'favorites', 'history']) {
+      final snapshot = await guest
+          .collection(name)
+          .get(const GetOptions(source: Source.server));
+      final collection = account.collection(name);
+      for (final doc in snapshot.docs) {
+        // Stable IDs make partial transfers safe to retry.
+        final target = collection.doc(
+          name == 'playlists' ? 'guest_${guestUid}_${doc.id}' : doc.id,
+        );
+        await destination.runTransaction((transaction) async {
+          final existing = await transaction.get(target);
+          if (!existing.exists) transaction.set(target, doc.data());
+        });
+      }
+    }
+  }
+
   // ── Playlists ──────────────────────────────────────────────────────────
 
   // Get all playlists for a user (real-time stream)

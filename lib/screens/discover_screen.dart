@@ -54,7 +54,7 @@ class DiscoverScreen extends ConsumerWidget {
               song: songs[i],
               onTap: () {
                 HapticFeedback.lightImpact();
-                ref.read(handlerProvider).play(songs, i);
+                ref.read(handlerProvider).playSongs(songs, i);
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const PlayerScreen()),

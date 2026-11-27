@@ -1,6 +1,8 @@
 // favorite_button.dart
 // Reusable heart button for favoriting songs
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/ytmusic_api.dart';
@@ -24,7 +26,7 @@ class FavoriteButton extends ConsumerStatefulWidget {
 
 class _FavoriteButtonState extends ConsumerState<FavoriteButton>
     with SingleTickerProviderStateMixin {
-  bool? _localState; // Local optimistic state
+  bool? _localState;
   bool _isProcessing = false;
   late AnimationController _animController;
   late Animation<double> _scaleAnim;
@@ -36,10 +38,9 @@ class _FavoriteButtonState extends ConsumerState<FavoriteButton>
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
-    _scaleAnim = Tween<double>(
-      begin: 1.0,
-      end: 1.3,
-    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
+    _scaleAnim = Tween<double>(begin: 1.0, end: 1.3).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
+    );
   }
 
   @override
@@ -51,9 +52,7 @@ class _FavoriteButtonState extends ConsumerState<FavoriteButton>
   Future<void> _toggle() async {
     if (_isProcessing) return;
 
-    final authState = ref.read(authStateProvider);
-    final user = authState.value;
-
+    final user = ref.read(authStateProvider).value;
     if (user == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -70,48 +69,37 @@ class _FavoriteButtonState extends ConsumerState<FavoriteButton>
       return;
     }
 
-    // Get current state
-    final isFavoriteAsync = ref.read(isFavoriteProvider(widget.song.id));
-    final currentState = _localState ?? isFavoriteAsync.value ?? false;
+    final currentState =
+        _localState ?? ref.read(isFavoriteProvider(widget.song.id)) ?? false;
 
+    unawaited(_animController.forward().then((_) => _animController.reverse()));
 
-    // Animate
-    _animController.forward().then((_) => _animController.reverse());
-
-    // Optimistic update
     setState(() {
       _localState = !currentState;
       _isProcessing = true;
     });
 
     try {
-      // Save to Firestore
       await ref
           .read(firestoreServiceProvider)
           .toggleFavorite(user.uid, widget.song);
-
       if (mounted) {
-        setState(() {
-          _localState = null; // Clear optimistic state
-          _isProcessing = false;
-        });
-        // Invalidate provider to refresh from Firestore
-        ref.invalidate(isFavoriteProvider(widget.song.id));
-      }
-    } catch (e) {
-
-      if (mounted) {
-        // Revert on error
         setState(() {
           _localState = null;
           _isProcessing = false;
         });
-
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _localState = null;
+          _isProcessing = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
+          const SnackBar(
+            content: Text('Could not update favorite'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
+            duration: Duration(seconds: 3),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -121,11 +109,9 @@ class _FavoriteButtonState extends ConsumerState<FavoriteButton>
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authStateProvider);
-    final user = authState.value;
+    final user = ref.watch(authStateProvider).value;
 
     if (user == null) {
-      // Not signed in - disabled state
       return IconButton(
         icon: Icon(
           Icons.favorite_border,
@@ -138,9 +124,8 @@ class _FavoriteButtonState extends ConsumerState<FavoriteButton>
       );
     }
 
-    // Get favorite state
-    final isFavoriteAsync = ref.watch(isFavoriteProvider(widget.song.id));
-    final isFavorite = _localState ?? isFavoriteAsync.value ?? false;
+    final isFavorite =
+        _localState ?? ref.watch(isFavoriteProvider(widget.song.id)) ?? false;
 
     return ScaleTransition(
       scale: _scaleAnim,

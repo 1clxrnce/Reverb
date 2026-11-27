@@ -1,6 +1,7 @@
 // player_screen.dart
 // Dramatically redesigned music player with smooth animations and beautiful layout
 
+import 'package:audio_service/audio_service.dart' show AudioProcessingState;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:palette_generator/palette_generator.dart';
 
 import '../api/ytmusic_api.dart';
-import '../audio/audio_handler.dart';
+import '../audio/audio_handler.dart' as audio;
 import '../providers.dart';
 import '../widgets/favorite_button.dart';
 
@@ -183,7 +184,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
 
 class _Body extends StatelessWidget {
   const _Body({required this.h});
-  final AudioHandler h;
+  final audio.AudioHandler h;
 
   @override
   Widget build(BuildContext context) {
@@ -199,6 +200,7 @@ class _Body extends StatelessWidget {
               _buildArtwork(song),
               const SizedBox(height: 36),
               _buildSongInfo(context, song),
+              _PlaybackStatus(h: h),
               const SizedBox(height: 36),
               _SeekBar(h: h),
               const SizedBox(height: 28),
@@ -838,9 +840,62 @@ class _Body extends StatelessWidget {
 
 // ── Seek Bar ──────────────────────────────────────────────────────────────────
 
+class _PlaybackStatus extends StatelessWidget {
+  const _PlaybackStatus({required this.h});
+
+  final audio.AudioHandler h;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([h.processing, h.failedSong]),
+      builder: (context, _) {
+        final failure = h.failedSong.value;
+        if (failure != null) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Column(
+              children: [
+                Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    'Could not play ${failure.title}.',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                TextButton(
+                  onPressed: h.retryPlayback,
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final label = switch (h.processing.value) {
+          AudioProcessingState.loading => 'Loading audio…',
+          AudioProcessingState.buffering => 'Buffering…',
+          _ => null,
+        };
+        if (label == null) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: Column(
+            children: [
+              LinearProgressIndicator(semanticsLabel: label),
+              const SizedBox(height: 8),
+              Text(label),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _SeekBar extends StatelessWidget {
   const _SeekBar({required this.h});
-  final AudioHandler h;
+  final audio.AudioHandler h;
 
   String _fmt(Duration d) {
     final m = d.inMinutes.remainder(60).toString();
@@ -927,42 +982,199 @@ class _SeekBar extends StatelessWidget {
 
 class _Controls extends StatelessWidget {
   const _Controls({required this.h});
-  final AudioHandler h;
+  final audio.AudioHandler h;
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: h.playing,
-      builder: (_, playing, __) => Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _ControlButton(
-            icon: Icons.skip_previous_rounded,
-            size: 42,
-            onPressed: () {
-              HapticFeedback.mediumImpact();
-              h.previous();
-            },
+    return Column(
+      children: [
+        ValueListenableBuilder<bool>(
+          valueListenable: h.playing,
+          builder: (_, playing, __) => Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _ControlButton(
+                icon: Icons.skip_previous_rounded,
+                size: 42,
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  h.previous();
+                },
+              ),
+              const SizedBox(width: 36),
+              _PlayPauseButton(
+                playing: playing,
+                onTap: () {
+                  HapticFeedback.mediumImpact();
+                  playing ? h.pause() : h.resume();
+                },
+              ),
+              const SizedBox(width: 36),
+              _ControlButton(
+                icon: Icons.skip_next_rounded,
+                size: 42,
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  h.next();
+                },
+              ),
+            ],
           ),
-          const SizedBox(width: 36),
-          _PlayPauseButton(
-            playing: playing,
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              playing ? h.pause() : h.resume();
-            },
-          ),
-          const SizedBox(width: 36),
-          _ControlButton(
-            icon: Icons.skip_next_rounded,
-            size: 42,
-            onPressed: () {
-              HapticFeedback.mediumImpact();
-              h.next();
-            },
-          ),
-        ],
+        ),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            ValueListenableBuilder<bool>(
+              valueListenable: h.shuffle,
+              builder: (_, on, __) => IconButton(
+                tooltip: 'Shuffle',
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  h.toggleShuffle();
+                },
+                icon: Icon(
+                  Icons.shuffle_rounded,
+                  color: on ? Colors.white : Colors.white38,
+                ),
+              ),
+            ),
+            ValueListenableBuilder<audio.RepeatMode>(
+              valueListenable: h.repeat,
+              builder: (_, mode, __) => IconButton(
+                tooltip: 'Repeat',
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  h.cycleRepeat();
+                },
+                icon: Icon(
+                  mode == audio.RepeatMode.one
+                      ? Icons.repeat_one_rounded
+                      : Icons.repeat_rounded,
+                  color: mode == audio.RepeatMode.off
+                      ? Colors.white38
+                      : Colors.white,
+                ),
+              ),
+            ),
+            ValueListenableBuilder<Duration?>(
+              valueListenable: h.sleepRemaining,
+              builder: (_, remaining, __) => IconButton(
+                tooltip: 'Sleep timer',
+                onPressed: () => _showSleepTimer(context, h),
+                icon: Icon(
+                  Icons.bedtime_rounded,
+                  color: remaining != null ? Colors.white : Colors.white38,
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Queue',
+              onPressed: () => _showQueue(context, h),
+              icon: const Icon(Icons.queue_music_rounded, color: Colors.white70),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  void _showSleepTimer(BuildContext context, audio.AudioHandler h) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A24),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      builder: (context) {
+        const options = <int>[5, 15, 30, 45, 60];
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              const Text(
+                'Sleep timer',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              ...options.map(
+                (m) => ListTile(
+                  title: Text(
+                    '$m minutes',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  onTap: () {
+                    h.setSleepTimer(Duration(minutes: m));
+                    Navigator.pop(context);
+                  },
+                ),
+              ),
+              ListTile(
+                title: const Text(
+                  'Turn off',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                onTap: () {
+                  h.setSleepTimer(null);
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showQueue(BuildContext context, audio.AudioHandler h) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A24),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return ValueListenableBuilder<List<Song>>(
+          valueListenable: h.songQueue,
+          builder: (_, songs, __) {
+            if (songs.isEmpty) {
+              return const SizedBox(
+                height: 180,
+                child: Center(
+                  child: Text(
+                    'Queue is empty',
+                    style: TextStyle(color: Colors.white54),
+                  ),
+                ),
+              );
+            }
+            return ListView.builder(
+              itemCount: songs.length,
+              itemBuilder: (context, i) {
+                final song = songs[i];
+                return ListTile(
+                  title: Text(
+                    song.title,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  subtitle: Text(
+                    song.artist,
+                    style: const TextStyle(color: Colors.white54),
+                  ),
+                  onTap: () {
+                    h.skipToQueueItem(i);
+                    Navigator.pop(context);
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -1120,7 +1332,7 @@ class _PlayPauseButtonState extends State<_PlayPauseButton>
 
 class _VolumeBar extends StatelessWidget {
   const _VolumeBar({required this.h});
-  final AudioHandler h;
+  final audio.AudioHandler h;
 
   @override
   Widget build(BuildContext context) {

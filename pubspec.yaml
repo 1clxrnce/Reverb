@@ -43,6 +43,12 @@ dependencies:
   # Image picker for custom playlist covers
   image_picker: ^1.1.2
 
+  # Google Sign-In (Android SHA-1 / SHA-256 must be in Firebase)
+  google_sign_in: ^6.3.0
+
+  # Android 13+ POST_NOTIFICATIONS
+  permission_handler: ^11.4.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

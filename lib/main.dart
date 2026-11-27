@@ -2,6 +2,8 @@
 // This is the first file that runs when the app opens.
 // It sets up the app, starts background tasks, and launches the UI.
 
+import 'package:audio_service/audio_service.dart' as asvc;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart'; // Flutter's UI toolkit — buttons, colors, text, etc.
 import 'package:flutter/services.dart'; // lets us control the Android status bar appearance
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // state management — shares data across the app
@@ -65,7 +67,17 @@ Future<void> main() async {
 
   // Create ONE music player that the whole app shares
   // Every screen (search, player) uses this exact same instance
-  final handler = AudioHandler();
+  final handler = await asvc.AudioService.init(
+    builder: AudioHandler.new,
+    config: const asvc.AudioServiceConfig(
+      androidNotificationChannelId: 'codes.afk.simple_player.audio',
+      androidNotificationChannelName: 'Reverb playback',
+      androidNotificationOngoing: true,
+      androidStopForegroundOnPause: true,
+      androidNotificationIcon: 'mipmap/ic_launcher',
+    ),
+  );
+  await Permission.notification.request();
 
   // Start the app
   // ProviderScope is required by Riverpod — it wraps the whole app and makes

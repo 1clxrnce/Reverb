@@ -174,7 +174,7 @@ class ArtistScreen extends ConsumerWidget {
                         child: ElevatedButton.icon(
                           onPressed: () {
                             HapticFeedback.mediumImpact();
-                            ref.read(handlerProvider).play(songs, 0);
+                            ref.read(handlerProvider).playSongs(songs, 0);
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -212,7 +212,7 @@ class ArtistScreen extends ConsumerWidget {
                       song: songs[songIndex],
                       onTap: () {
                         HapticFeedback.lightImpact();
-                        ref.read(handlerProvider).play(songs, songIndex);
+                        ref.read(handlerProvider).playSongs(songs, songIndex);
                         Navigator.push(
                           context,
                           MaterialPageRoute(
