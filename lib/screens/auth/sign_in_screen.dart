@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers.dart';
+import 'guest_library_transfer_dialog.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
@@ -61,10 +62,52 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
       );
       if (mounted) Navigator.pop(context);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _errorMessage = e.toString();
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final result = await ref.read(authServiceProvider).signInWithGoogle(
+        confirmGuestTransfer: (email) async {
+          if (!mounted) return false;
+          return await confirmGuestLibraryTransfer(context, email);
+        },
+      );
+      if (result != null && mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) setState(() => _errorMessage = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _resetPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _errorMessage = 'Enter your email first, then tap Forgot password.');
+      return;
+    }
+    try {
+      await ref.read(authServiceProvider).sendPasswordResetEmail(email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Password reset email sent'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _errorMessage = e.toString());
     }
   }
 
@@ -227,7 +270,21 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
                     ),
                   ),
 
-                  const SizedBox(height: 32),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _isLoading ? null : _resetPassword,
+                      child: Text(
+                        'Forgot password?',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.7),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
 
                   // Error message
                   if (_errorMessage != null)
@@ -305,6 +362,21 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
                               ),
                             ),
                     ),
+                  ),
+
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: _isLoading ? null : _signInWithGoogle,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                      minimumSize: const Size.fromHeight(52),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    icon: const Icon(Icons.g_mobiledata, size: 28),
+                    label: const Text('Continue with Google'),
                   ),
 
                   const SizedBox(height: 32),

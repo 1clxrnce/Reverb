@@ -41,6 +41,7 @@ class ProfileScreen extends ConsumerWidget {
           return _SignedInView(
             email: user.email,
             isAnonymous: user.isAnonymous,
+            emailVerified: user.emailVerified,
             onSignOut: () async {
               await authService.signOut();
               if (context.mounted) Navigator.pop(context);
@@ -48,6 +49,29 @@ class ProfileScreen extends ConsumerWidget {
             onUpgrade: () {
               Navigator.pushNamed(context, '/sign-up');
             },
+            onVerifyEmail: () async {
+              try {
+                await authService.sendEmailVerification();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Verification email sent'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(e.toString()),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              }
+            },
+            onReload: () => authService.reloadUser(),
           );
         },
         loading: () => const Center(
@@ -137,14 +161,20 @@ class _SignedInView extends StatelessWidget {
   const _SignedInView({
     required this.email,
     required this.isAnonymous,
+    required this.emailVerified,
     required this.onSignOut,
     required this.onUpgrade,
+    required this.onVerifyEmail,
+    required this.onReload,
   });
 
   final String? email;
   final bool isAnonymous;
+  final bool emailVerified;
   final VoidCallback onSignOut;
   final VoidCallback onUpgrade;
+  final VoidCallback onVerifyEmail;
+  final VoidCallback onReload;
 
   @override
   Widget build(BuildContext context) {
@@ -232,12 +262,56 @@ class _SignedInView extends StatelessWidget {
             ),
           ),
 
-        // Account section
+        if (!isAnonymous && !emailVerified)
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange.withOpacity(0.4)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Verify your email',
+                  style: TextStyle(
+                    color: Colors.orangeAccent,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'We sent a link to your inbox. Verify so you can recover this account.',
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: onVerifyEmail,
+                      child: const Text('Resend email'),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: onReload,
+                      child: const Text('I already verified'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
         _SectionHeader(title: 'Account'),
         _MenuItem(
           icon: Icons.email,
           title: 'Email',
-          subtitle: isAnonymous ? 'Not set' : (email ?? 'Unknown'),
+          subtitle: isAnonymous
+              ? 'Not set'
+              : '${email ?? 'Unknown'}${emailVerified ? '' : ' (unverified)'}',
           onTap: null,
         ),
 

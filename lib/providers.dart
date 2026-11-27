@@ -106,14 +106,9 @@ final userFavoritesProvider = StreamProvider.autoDispose((ref) {
 
 // ── isFavoriteProvider ────────────────────────────────────────────────────────
 // Check if a specific song is favorited
-final isFavoriteProvider = FutureProvider.family<bool, String>((
-  ref,
-  songId,
-) async {
-  final user = ref.watch(authStateProvider).value;
-  if (user == null) return false;
-
-  return ref.watch(firestoreServiceProvider).isFavorite(user.uid, songId);
+final isFavoriteProvider = Provider.family<bool, String>((ref, songId) {
+  final favorites = ref.watch(userFavoritesProvider).value ?? const <Song>[];
+  return favorites.any((song) => song.id == songId);
 });
 
 // ── userHistoryProvider ───────────────────────────────────────────────────────

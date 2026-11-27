@@ -94,7 +94,7 @@ class PlaylistDetailScreen extends ConsumerWidget {
                       index: i + 1,
                       playlistName: playlist.name,
                       onTap: () {
-                        ref.read(handlerProvider).play(playlist.songs, i);
+                        ref.read(handlerProvider).playSongs(playlist.songs, i);
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -122,7 +122,7 @@ class PlaylistDetailScreen extends ConsumerWidget {
       floatingActionButton: playlist.songs.isNotEmpty
           ? FloatingActionButton(
               onPressed: () {
-                ref.read(handlerProvider).play(playlist.songs, 0);
+                ref.read(handlerProvider).playSongs(playlist.songs, 0);
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const PlayerScreen()),

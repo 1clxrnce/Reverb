@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers.dart';
+import 'guest_library_transfer_dialog.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
@@ -74,10 +75,31 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen>
 
       if (mounted) Navigator.pop(context);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _errorMessage = e.toString();
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _signUpWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final result = await ref.read(authServiceProvider).signInWithGoogle(
+        confirmGuestTransfer: (email) async {
+          if (!mounted) return false;
+          return await confirmGuestLibraryTransfer(context, email);
+        },
+      );
+      if (result != null && mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) setState(() => _errorMessage = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -422,6 +444,21 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen>
                               ),
                             ),
                     ),
+                  ),
+
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: _isLoading ? null : _signUpWithGoogle,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                      minimumSize: const Size.fromHeight(52),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    icon: const Icon(Icons.g_mobiledata, size: 28),
+                    label: const Text('Continue with Google'),
                   ),
 
                   const SizedBox(height: 32),

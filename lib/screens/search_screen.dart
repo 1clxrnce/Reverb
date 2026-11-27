@@ -56,7 +56,7 @@ class _State extends ConsumerState<SearchScreen> {
 
   void _tap(List<Song> songs, int i) {
     HapticFeedback.lightImpact();
-    ref.read(handlerProvider).play(songs, i);
+    ref.read(handlerProvider).playSongs(songs, i);
     Navigator.push(context, _playerRoute());
   }
 

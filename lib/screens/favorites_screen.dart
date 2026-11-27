@@ -85,7 +85,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                   itemBuilder: (ctx, i) => _FavoriteCard(
                     song: favorites[i],
                     onTap: () {
-                      ref.read(handlerProvider).play(favorites, i);
+                      ref.read(handlerProvider).playSongs(favorites, i);
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const PlayerScreen()),
@@ -107,7 +107,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                 itemBuilder: (ctx, i) => _FavoriteListTile(
                   song: favorites[i],
                   onTap: () {
-                    ref.read(handlerProvider).play(favorites, i);
+                    ref.read(handlerProvider).playSongs(favorites, i);
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const PlayerScreen()),
@@ -148,7 +148,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
               favoritesAsync.value!.isNotEmpty
           ? FloatingActionButton(
               onPressed: () {
-                ref.read(handlerProvider).play(favoritesAsync.value!, 0);
+                ref.read(handlerProvider).playSongs(favoritesAsync.value!, 0);
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const PlayerScreen()),
